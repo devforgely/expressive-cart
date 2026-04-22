@@ -3,7 +3,6 @@ const CartModel = require('../models/cart');
 const OrderModel = require('../models/order');
 const CartItemModel = require('../models/cartItem');
 const { STRIPE_SECRET_KEY } = require('../config');
-
 const stripe = require('stripe')(STRIPE_SECRET_KEY);
 
 module.exports = class CartService {
@@ -80,7 +79,7 @@ module.exports = class CartService {
     }
   }
 
-  async checkout(cartId, userId, paymentInfo) {
+  async checkout(cartId, userId) {
     try {
       // Load cart items
       const cartItems = await CartItemModel.find(cartId);
@@ -91,26 +90,26 @@ module.exports = class CartService {
       }, 0);
 
       // Generate initial order
-      const Order = new OrderModel({ total, userId });
+      const Order = new OrderModel({ userId, total, status: 'pending' });
       Order.addItems(cartItems);
       await Order.create();
 
-      // Make charge to payment method (not required in this project)
-      const charge = await stripe.charges.create({
+      // Stripe payment intent (Playground only - no actual payment processing)
+      const paymentIntent = await stripe.paymentIntents.create({
         amount: total,
-        currency: 'gbp',
-        source: paymentInfo.id,
-        description: 'Payment Commission'
+        currency: "gbp",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          orderId: order.id
+        }
       });
 
-      // On successful charge to payment method, update order status to COMPLETE
-      const order = Order.update({ status: 'COMPLETE' });
-
-      return order;
-
+      return {
+        orderId: order.id,
+        clientSecret: paymentIntent.client_secret
+      };
     } catch(err) {
       throw err;
     }
   }
-
 }
