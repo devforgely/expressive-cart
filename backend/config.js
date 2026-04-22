@@ -7,5 +7,6 @@ module.exports = {
     PGPASSWORD: process.env.PGPASSWORD,
     PGPORT: process.env.PGPORT
   },
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   SESSION_SECRET: process.env.SESSION_SECRET
 }
