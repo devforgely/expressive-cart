@@ -1,0 +1,290 @@
+swagger: "2.0"
+
+info:
+  title: "Expressive Cart Ecommerce Rest API"
+  description: "E-commerce REST API"
+  version: "1.0.0"
+
+
+schemes: 
+  - http
+
+host: localhost:4000
+
+basePath: "/"
+
+consumes:
+  - "application/json"
+
+produces:
+  - "application/json"
+
+paths:
+  /auth/register:
+    post:
+      summary: "Register a new user"
+      description: "Register a new user"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        409:
+          description: 409 Conflict
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+  /auth/login:
+    post:
+      summary: "Login to a user account"
+      description: "Login to a user account"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        401:
+          description: 401 Unauthorized
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+  /users/{userId}:
+    get:
+      summary: "Get user record"
+      description: "Get user record"
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+    put:
+      summary: "Update user record"
+      description: "Update user record"
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /cart:
+    get:
+      summary: "Load current user cart"
+      description: "Load current user cart"
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+    post:
+      summary: "Create current user cart"
+      description: "Create current user cart"
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /cart/items:
+    post:
+      summary: "Add item to cart"
+      description: "Add item to cart"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /cart/items/{cartItemId}:
+    put:
+      summary: "Update cart item"
+      description: "Update cart item"
+      parameters:
+        - in: path
+          name: cartItemId
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+    delete:
+      summary: "Remove cart item"
+      description: "Remove cart item"
+      parameters:
+        - in: path
+          name: cartItemId
+          required: true
+          type: string
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /cart/checkout:
+    post:
+      summary: "Checkout cart"
+      description: "Create order from cart"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /orders:
+    get:
+      summary: "List user orders"
+      description: "List user orders"
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /orders/{orderId}:
+    get:
+      summary: "Get order by id"
+      description: "Get order by id"
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          type: string
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /products:
+    get:
+      summary: "List products"
+      description: "List products"
+      parameters:
+        - in: query
+          name: search
+          required: false
+          type: string
+        - in: query
+          name: category
+          required: false
+          type: string
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
+
+  /products/{productId}:
+    get:
+      summary: "Get product by id"
+      description: "Get product by id"
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          type: string
+      responses:
+        200:
+          description: 200 Success
+          schema:
+            type: object
+        500:
+          description: 500 Internal Server Error
+          schema:
+            type: object
