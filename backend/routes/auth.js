@@ -35,4 +35,14 @@ module.exports = (app, passport) => {
       next(err);
     }
   });
+
+  // Check Login Status Endpoint
+  router.get('/logged_in', async (req, res, next) => {
+    try {
+      const response = await AuthServiceInstance.isLoggedIn(req);
+      res.status(200).send(response);
+    } catch(err) {
+      next(err);
+    }
+  });
 }

@@ -52,4 +52,15 @@ module.exports = class AuthService {
 
   };
 
+  async isLoggedIn(req) {
+    try {
+      if (req.isAuthenticated()) {
+        return { loggedIn: true, user: req.user };
+      } else {
+        return { loggedIn: false };
+      }
+    } catch(err) {
+      throw createError(500, err);
+    }
+  }
 }
