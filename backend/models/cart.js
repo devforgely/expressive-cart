@@ -93,4 +93,23 @@ module.exports = class CartModel {
     }
   }
 
+  /**
+   * Returns the user's cart, creating one if they do not have one yet.
+   * @param  {number} userId
+   * @return {Object}        [Cart record]
+   */
+  static async findOrCreate(userId) {
+    try {
+      const statement = `INSERT INTO carts (user_id)
+                         VALUES ($1)
+                         ON CONFLICT (user_id)
+                         DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+                         RETURNING *`;
+      const result = await db.query(statement, [userId]);
+      return result.rows[0];
+    } catch (err) {
+      throw new Error(err);
+    }
+  }
+
 }

@@ -1,11 +1,12 @@
 const db = require('../db');
-const moment = require('moment');
 const pgp = require('pg-promise')({ capSQL: true });
 
 
 const orderItemTable = new pgp.helpers.ColumnSet([
   { name: 'order_id', prop: 'orderId' },
-  { name: 'product_id', prop: 'productId' }
+  { name: 'product_id', prop: 'productId' },
+  { name: 'quantity', prop: 'quantity' },
+  { name: 'price', prop: 'price' }
 ], { table: 'order_items' });
 
 module.exports = class OrderItemModel {
@@ -26,7 +27,7 @@ module.exports = class OrderItemModel {
     try {
 
       // Generate SQL statement - using helper for dynamic parameter injection
-      const statement = pgp.helpers.insert(data, orderItemTable) + 'RETURNING *';
+      const statement = pgp.helpers.insert(data, orderItemTable) + ' RETURNING *';
  
       // Execute SQL statment
       const result = await db.query(statement);
@@ -38,6 +39,20 @@ module.exports = class OrderItemModel {
       return null;
 
     } catch(err) {
+      throw new Error(err);
+    }
+  }
+
+  static async createMany(rows) {
+    if (!rows || !rows.length) {
+      return [];
+    }
+
+    try {
+      const statement = pgp.helpers.insert(rows, orderItemTable) + ' RETURNING *';
+      const result = await db.query(statement);
+      return result.rows || [];
+    } catch (err) {
       throw new Error(err);
     }
   }
@@ -55,13 +70,13 @@ module.exports = class OrderItemModel {
                             oi.id,
                             oi.quantity,
                             oi.price,
-                            p.id AS product_id,
+                            oi.product_id,
                             p.name,
                             p.description,
-                            p.price AS unit_price
+                            p.image_url
                          FROM order_items oi
-                         INNER JOIN products p ON p.id = oi.product_id
-                         WHERE order_id = $1`
+                         LEFT JOIN products p ON p.id = oi.product_id
+                         WHERE oi.order_id = $1`
       const values = [orderId];
   
       // Execute SQL statment

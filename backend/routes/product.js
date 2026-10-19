@@ -3,6 +3,7 @@ const router = express.Router();
 
 const ProductService = require('../services/ProductService');
 const ProductServiceInstance = new ProductService();
+const { productIdParam } = require('../middleware/validate');
 
 module.exports = (app) => {
 
@@ -10,25 +11,21 @@ module.exports = (app) => {
 
   router.get('/', async (req, res, next) => {
     try {
-
       const queryParams = req.query;
-
       const response = await ProductServiceInstance.list(queryParams);
       res.status(200).send(response);
-    } catch(err) {
+    } catch (err) {
       next(err);
     }
   });
 
-  router.get('/:productId', async (req, res, next) => {
+  router.get('/:productId', productIdParam, async (req, res, next) => {
     try {
       const { productId } = req.params;
-
       const response = await ProductServiceInstance.get(productId);
-
       res.status(200).send(response);
-    } catch(err) {
+    } catch (err) {
       next(err);
     }
   });
-}
+};

@@ -1,37 +1,66 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const AuthService = require('../services/AuthService');
+const UserModel = require('../models/user');
+const safeUser = require('../utils/safeUser');
+const {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL
+} = require('../config');
+
 const AuthServiceInstance = new AuthService();
+const UserModelInstance = new UserModel();
 
 module.exports = (app) => {
 
-  // Initialize passport
-  app.use(passport.initialize());  
+  app.use(passport.initialize());
   app.use(passport.session());
-  
-  // Set method to serialize data to store in cookie
+
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
-  
-  // Set method to deserialize data stored in cookie and attach to req.user
-  passport.deserializeUser((id, done) => {
-    done(null, { id });
+
+  passport.deserializeUser(async (id, done) => {
+    try {
+      const user = await UserModelInstance.findOneById(id);
+      done(null, user ? safeUser(user) : false);
+    } catch (err) {
+      done(err);
+    }
   });
 
-  // Configure local strategy to be use for local login
   passport.use(new LocalStrategy(
-    async (username, password, done) => {
+    { usernameField: 'email' },
+    async (email, password, done) => {
       try {
-        const user = await AuthServiceInstance.login({ email: username, password });
+        const user = await AuthServiceInstance.login({ email, password });
         return done(null, user);
-      } catch(err) {
+      } catch (err) {
+        if (err.status === 401) {
+          return done(null, false);
+        }
         return done(err);
       }
     }
   ));
 
-  return passport;
+  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: GOOGLE_CALLBACK_URL
+    }, async (accessToken, refreshToken, profile, done) => {
+      try {
+        const user = await AuthServiceInstance.findOrCreateGoogleUser(profile);
+        return done(null, user);
+      } catch (err) {
+        return done(err);
+      }
+    }));
+  }
 
-}
+  return passport;
+};

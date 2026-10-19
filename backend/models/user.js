@@ -1,12 +1,23 @@
 const db = require('../db');
 const pgp = require('pg-promise')({ capSQL: true });
 
+const skipUndefined = col => col.value === undefined;
 
-const userTable = new pgp.helpers.ColumnSet([
+const userInsertTable = new pgp.helpers.ColumnSet([
+  'email',
+  'password',
   { name: 'first_name', prop: 'firstName' },
   { name: 'last_name', prop: 'lastName' },
-  { name: 'social_auth', prop: 'socialAuth' },
-  { name: 'updated_at', prop: 'updatedAt' }
+  { name: 'social_auth', prop: 'socialAuth', mod: ':json', def: null }
+], { table: 'users' });
+
+const userUpdateTable = new pgp.helpers.ColumnSet([
+  { name: 'email', skip: skipUndefined },
+  { name: 'password', skip: skipUndefined },
+  { name: 'first_name', prop: 'firstName', skip: skipUndefined },
+  { name: 'last_name', prop: 'lastName', skip: skipUndefined },
+  { name: 'social_auth', prop: 'socialAuth', mod: ':json', skip: skipUndefined },
+  { name: 'updated_at', prop: 'updatedAt', skip: skipUndefined }
 ], { table: 'users' });
 
 module.exports = class UserModel {
@@ -18,11 +29,7 @@ module.exports = class UserModel {
    */
   async create(data) {
     try {
-
-      // Generate SQL statement - using helper for dynamic parameter injection
-      const statement = pgp.helpers.insert(data, userTable) + 'RETURNING *';
-  
-      // Execute SQL statment
+      const statement = pgp.helpers.insert(data, userInsertTable) + ' RETURNING *';
       const result = await db.query(statement);
 
       if (result.rows?.length) {
@@ -30,8 +37,7 @@ module.exports = class UserModel {
       }
 
       return null;
-
-    } catch(err) {
+    } catch (err) {
       throw new Error(err);
     }
   }
@@ -43,14 +49,9 @@ module.exports = class UserModel {
    */
   async update(data) {
     try {
-
       const { id, ...params } = data;
-
-      // Generate SQL statement - using helper for dynamic parameter injection
       const condition = pgp.as.format('WHERE id = ${id} RETURNING *', { id });
-      const statement = pgp.helpers.update(params, userTable) + condition;
-  
-      // Execute SQL statment
+      const statement = pgp.helpers.update(params, userUpdateTable) + condition;
       const result = await db.query(statement);
 
       if (result.rows?.length) {
@@ -58,8 +59,7 @@ module.exports = class UserModel {
       }
 
       return null;
-
-    } catch(err) {
+    } catch (err) {
       throw new Error(err);
     }
   }
@@ -71,23 +71,18 @@ module.exports = class UserModel {
    */
   async findOneByEmail(email) {
     try {
-
-      // Generate SQL statement
       const statement = `SELECT *
                          FROM users
                          WHERE email = $1`;
       const values = [email];
-  
-      // Execute SQL statment
       const result = await db.query(statement, values);
 
       if (result.rows?.length) {
-        return result.rows[0]
+        return result.rows[0];
       }
-  
-      return null;
 
-    } catch(err) {
+      return null;
+    } catch (err) {
       throw new Error(err);
     }
   }
@@ -99,24 +94,19 @@ module.exports = class UserModel {
    */
   async findOneById(id) {
     try {
-
-      // Generate SQL statement
       const statement = `SELECT *
                          FROM users
                          WHERE id = $1`;
       const values = [id];
-  
-      // Execute SQL statment
       const result = await db.query(statement, values);
 
       if (result.rows?.length) {
-        return result.rows[0]
+        return result.rows[0];
       }
-  
-      return null;
 
-    } catch(err) {
+      return null;
+    } catch (err) {
       throw new Error(err);
     }
   }
-}
+};

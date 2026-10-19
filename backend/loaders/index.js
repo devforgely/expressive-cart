@@ -5,23 +5,16 @@ const swaggerLoader = require('./swagger');
 
 module.exports = async (app) => {
 
-  // Load Express middlewares
   const expressApp = await expressLoader(app);
-
-  // Load Passport middleware
   const passport = await passportLoader(expressApp);
 
-  // Load API route handlers
   await routeLoader(app, passport);
-
-  // Load Swagger
   await swaggerLoader(app);
-  
-  // Error Handler
-  app.use((err, req, res, next) => {
 
-    const { message, status } = err;
-  
+  app.use((err, req, res, next) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || 'Internal Server Error';
+
     return res.status(status).send({ message });
   });
-}
+};

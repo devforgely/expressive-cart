@@ -10,7 +10,7 @@ module.exports = (app, passport) => {
   const apiRouter = express.Router();
 
   authRouter(apiRouter, passport);
-  cartRouter(apiRouter);
+  cartRouter(apiRouter, passport);
   orderRouter(apiRouter);
   productRouter(apiRouter);
   userRouter(apiRouter);
