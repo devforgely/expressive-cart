@@ -1,7 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import { combineReducers } from 'redux';
-import authReducer from './auth/Auth.reducers';
+import { setUnauthorizedHandler } from '../apis/client';
+import authReducer, { sessionExpired } from './auth/Auth.reducers';
 import cartReducer from './cart/Cart.reducers';
 import orderReducer from './orders/Orders.reducers';
 import productReducer from './products/Products.reducers';
@@ -18,6 +19,12 @@ const store = configureStore({
         cart: cartReducer,
         orders: orderReducer
     })
+});
+
+setUnauthorizedHandler(() => {
+  if (store.getState().auth.isAuthenticated) {
+    store.dispatch(sessionExpired());
+  }
 });
 
 export default store;

@@ -1,15 +1,25 @@
 import { Box, Button, Container, Grid, IconButton, Typography } from "@mui/material";
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { useEffect, useState } from "react";
 import { ProductCard } from "../../components/ProductCard/ProductCard";
-import { type Product } from "../../store/products/Products.reducers";
+import { loadProducts } from "../../store/products/Products.actions";
+import { useAppDispatch, useAppSelector } from "../../store/store";
 import { useNavigate, useParams } from "react-router-dom";
-
 
 const Categories = () => {
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
     const { category } = useParams();
-    
-    const filteredProducts = [] as Product[];
+    const products = useAppSelector(state => Object.values(state.products));
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+      dispatch(loadProducts()).finally(() => setLoaded(true));
+    }, [dispatch]);
+
+    const filteredProducts = !category || category === 'All'
+      ? products
+      : products.filter(product => product.category === category);
 
     const onGoHome = () => {
         navigate('/');
@@ -24,7 +34,13 @@ const Categories = () => {
          </Typography>
       </Box>
       
-      {filteredProducts.length === 0 ? (
+      {!loaded ? (
+         <Box sx={{ py: 12, textAlign: 'center' }}>
+           <Typography variant="h5" color="text.secondary" sx={{ fontWeight: '600' }}>
+             Loading products...
+           </Typography>
+         </Box>
+      ) : filteredProducts.length === 0 ? (
          <Box sx={{ py: 12, textAlign: 'center', bgcolor: 'white', borderRadius: 4 }}>
            <Typography variant="h5" color="text.secondary" sx={{ fontWeight: '600' }}>
              No items found matching your criteria.

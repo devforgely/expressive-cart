@@ -1,28 +1,45 @@
 import { Box, Button, Container, Divider, Link, Paper, Stack, TextField, Typography } from '@mui/material';
 import { Form, Formik } from 'formik';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingButton } from '../../components/Button/LoadingButton';
 import { useAppDispatch, useAppSelector } from '../../store/store';
 
 import { loginUser, type CredentialsParams } from '../../store/auth/Auth.actions';
+import { safeNextPath } from '../../utils/navigation';
+import { hasPendingCartItem } from '../../utils/pendingCart';
 
 import * as Yup from 'yup';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
-  const { error } = useAppSelector(state => state.auth);
+  const { error, isAuthenticated } = useAppSelector(state => state.auth);
+  const nextPath = safeNextPath(searchParams.get('next'));
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(nextPath, { replace: true });
+    }
+  }, [isAuthenticated, navigate, nextPath]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const googleError = searchParams.get('error') === 'google_unavailable'
+    ? 'Google sign-in is not set up on this server yet.'
+    : searchParams.get('error') === 'google_failed'
+      ? 'Google sign-in could not be completed. Try again.'
+      : '';
 
   // Login handler
   const handleLogin = async (credentials: CredentialsParams) => {
     try {
       setIsLoading(true);
-      await dispatch(loginUser(credentials));
-      setIsLoading(false);
-      navigate('/');
-    } catch(err) {
+      await dispatch(loginUser(credentials)).unwrap();
+      navigate(nextPath);
+    } catch {
+      // The auth slice stores the message shown on the form.
+    } finally {
       setIsLoading(false);
     }
   }
@@ -56,23 +73,31 @@ const Login = () => {
                 await handleLogin(data);
               }}
             >
-              {({ errors, touched }) => (
+              {({ errors, touched, values, handleChange, handleBlur }) => (
                 <Form>
                   {/* Header */}
                   <Box sx={{ mb: 4 }}>
                     <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
                       Log in
                     </Typography>
+                    {hasPendingCartItem() && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Sign in to save this item to your cart.
+                      </Typography>
+                    )}
                   </Box>
 
                   {/* Form Fields */}
                   <Stack spacing={3}>
                     <TextField
+                      fullWidth
                       label="Email"
                       name="email"
                       type="email"
                       variant="outlined"
-                      
+                      value={values.email}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.email && !!errors.email}
                       helperText={touched.email && errors.email}
                     />
@@ -83,12 +108,15 @@ const Login = () => {
                       name="password"
                       type="password"
                       variant="outlined"
+                      value={values.password}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.password && !!errors.password}
                       helperText={touched.password && errors.password}
                     />
 
                     {/* Error Message */}
-                    {error && (
+                    {(error || googleError) && (
                       <Box
                         sx={{
                           bgcolor: '#ffebee',
@@ -98,7 +126,7 @@ const Login = () => {
                           border: '1px solid #ef5350',
                         }}
                       >
-                        <Typography variant="body2">{error}</Typography>
+                        <Typography variant="body2">{error || googleError}</Typography>
                       </Box>
                     )}
 
@@ -154,7 +182,10 @@ const Login = () => {
                       variant="outlined"
                       color="primary"
                       fullWidth
-                      onClick={() => navigate('/register')}
+                      onClick={() => {
+                        const next = searchParams.get('next');
+                        navigate(next ? `/register?next=${encodeURIComponent(next)}` : '/register');
+                      }}
                       sx={{
                         borderRadius: '50px',
                         textTransform: 'none',

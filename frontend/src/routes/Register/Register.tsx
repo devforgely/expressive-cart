@@ -1,16 +1,19 @@
 import { Box, Button, Container, Divider, Paper, Stack, TextField, Typography } from '@mui/material';
 import { Form, Formik } from 'formik';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingButton } from '../../components/Button/LoadingButton';
 import { useAppDispatch, useAppSelector } from '../../store/store';
 
 import { registerUser, type CredentialsParams } from '../../store/auth/Auth.actions';
+import { safeNextPath } from '../../utils/navigation';
+import { hasPendingCartItem } from '../../utils/pendingCart';
 
 import * as Yup from 'yup';
 
 const Register = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const { error } = useAppSelector(state => state.auth);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,10 +22,11 @@ const Register = () => {
   const handleRegister = async (credentials: CredentialsParams) => {
     try {
       setIsLoading(true);
-      await dispatch(registerUser(credentials));
-      setIsLoading(false);
-      navigate('/');
-    } catch(err) {
+      await dispatch(registerUser(credentials)).unwrap();
+      navigate(safeNextPath(searchParams.get('next')));
+    } catch {
+      // The auth slice stores the message shown on the form.
+    } finally {
       setIsLoading(false);
     }
   }
@@ -68,6 +72,11 @@ const Register = () => {
                     <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
                       Create Account
                     </Typography>
+                    {hasPendingCartItem() && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Create an account to save this item to your cart.
+                      </Typography>
+                    )}
                     <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
                       Join Expressive Cart today
                     </Typography>
@@ -170,7 +179,10 @@ const Register = () => {
                       Already have an account?
                     </Typography>
                     <Button
-                      onClick={() => navigate('/login')}
+                      onClick={() => {
+                      const next = searchParams.get('next');
+                      navigate(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
+                    }}
                       variant="outlined"
                       color="primary"
                       fullWidth

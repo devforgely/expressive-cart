@@ -11,7 +11,7 @@ const HorizontalProductList = ({ title, products }: HorizontalProductListProps) 
     const navigate = useNavigate();
 
     const onProductClick = (product: Product) => {
-        navigate(`/product/${product.id}`);
+        navigate(`/products/${product.id}`);
     };
 
     return (

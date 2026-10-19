@@ -1,10 +1,10 @@
-import { Logout as LogoutIcon, Receipt as ReceiptIcon, Search as SearchIcon, ShoppingCart as ShoppingCartIcon, } from '@mui/icons-material';
-import { Avatar, Badge, Box, Button, Container, IconButton, InputAdornment, ListItemIcon, Menu, MenuItem, TextField, Typography, useMediaQuery } from '@mui/material';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Logout as LogoutIcon, Person as PersonIcon, Receipt as ReceiptIcon, Search as SearchIcon, ShoppingCart as ShoppingCartIcon, } from '@mui/icons-material';
+import { Avatar, Badge, Box, Button, IconButton, InputAdornment, ListItemIcon, Menu, MenuItem, TextField, Typography, useMediaQuery } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ExpressiveCartLogo from '../../assets/Expressive.png';
 import { logoutUser } from '../../store/auth/Auth.actions';
-import { useAppSelector } from '../../store/store';
+import { useAppDispatch, useAppSelector } from '../../store/store';
 import theme from '../../theme/theme';
 
 const CATEGORIES = ["All", "Tech", "Fashion", "Home & Kitchen", "Beauty & Wellness", "Garden Essentials", "Must Haves"];
@@ -15,16 +15,24 @@ interface HeaderProps {
 
 const Header = ({ toggleCartDrawer }: HeaderProps) => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector(state => state.auth);
   const { items } = useAppSelector(state => state.cart);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const queryFromUrl = searchParams.get('q') ?? '';
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl);
+
+  useEffect(() => {
+    setSearchQuery(queryFromUrl);
+  }, [queryFromUrl]);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
-  const handleLogout = () => { logoutUser(); handleMenuClose(); };
+  const handleLogout = () => { dispatch(logoutUser()); handleMenuClose(); };
 
   const onGoHome = () => {
     navigate('/');
@@ -81,9 +89,8 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
   );
 
   return (
-    <Box sx={{ position: 'sticky', top: 0, zIndex: 1100 }}>
-      <Container maxWidth="xl" disableGutters>
-        <Box sx={{ px: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+    <Box sx={{ position: 'sticky', top: 0, zIndex: 1100, width: '100%' }}>
+      <Box sx={{ width: '100%', px: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           {!isMobile ? (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minHeight: { xs: 56, md: 60 }, py: { xs: 1, md: 0 } }}>
               <Box
@@ -126,6 +133,7 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{user.name}</Typography>
                         <Typography variant="caption" color="text.secondary">{user.email}</Typography>
                       </Box>
+                      <MenuItem onClick={() => { handleMenuClose(); navigate('/account'); }}><ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>Your Account</MenuItem>
                       <MenuItem onClick={() => { handleMenuClose(); onOpenOrders(); }}><ListItemIcon><ReceiptIcon fontSize="small" /></ListItemIcon>My Orders</MenuItem>
                       <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}><ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>Sign Out</MenuItem>
                     </Menu>
@@ -137,7 +145,7 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
                 )}
 
                 <IconButton color="inherit" onClick={toggleCartDrawer} sx={{ ml: 1, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, borderRadius: '10px' }}>
-                  <Badge badgeContent={items.length} color="secondary">
+                  <Badge badgeContent={itemCount} color="secondary">
                     <ShoppingCartIcon />
                   </Badge>
                 </IconButton>
@@ -182,7 +190,8 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
                           <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{user.name}</Typography>
                           <Typography variant="caption" color="text.secondary">{user.email}</Typography>
                         </Box>
-                        <MenuItem onClick={() => { handleMenuClose(); onOpenOrders(); }}><ListItemIcon><ReceiptIcon fontSize="small" /></ListItemIcon>My Orders</MenuItem>
+                        <MenuItem onClick={() => { handleMenuClose(); navigate('/account'); }}><ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>Your Account</MenuItem>
+                      <MenuItem onClick={() => { handleMenuClose(); onOpenOrders(); }}><ListItemIcon><ReceiptIcon fontSize="small" /></ListItemIcon>My Orders</MenuItem>
                         <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}><ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>Sign Out</MenuItem>
                       </Menu>
                     </>
@@ -193,7 +202,7 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
                   )}
 
                   <IconButton color="inherit" onClick={toggleCartDrawer} sx={{ ml: 1, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, borderRadius: '10px' }}>
-                    <Badge badgeContent={items.length} color="secondary">
+                    <Badge badgeContent={itemCount} color="secondary">
                       <ShoppingCartIcon />
                     </Badge>
                   </IconButton>
@@ -206,19 +215,16 @@ const Header = ({ toggleCartDrawer }: HeaderProps) => {
             </>
           )}
         </Box>
-      </Container>
       
       {/* Categories Strip below header */}
-      <Box sx={{ bgcolor: '#232F3E', color: 'white' }}>
-        <Container maxWidth="xl">
-           <Box sx={{ display: 'flex', gap: 4, overflowX: 'auto', py: 1.2, '&::-webkit-scrollbar': { display: 'none' } }}>
-             {CATEGORIES.filter(c => c !== 'All').map(cat => (
-               <Typography key={cat} onClick={() => onCategoryClick(cat)} sx={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', transition: 'color 0.2s', '&:hover': { color: '#FBBF24' } }}>
-                 {cat}
-               </Typography>
-             ))}
-           </Box>
-        </Container>
+      <Box sx={{ width: '100%', bgcolor: '#232F3E', color: 'white' }}>
+        <Box sx={{ display: 'flex', gap: 4, overflowX: 'auto', px: { xs: 2, md: 4 }, py: 1.2, '&::-webkit-scrollbar': { display: 'none' } }}>
+          {CATEGORIES.filter(c => c !== 'All').map(cat => (
+            <Typography key={cat} onClick={() => onCategoryClick(cat)} sx={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', transition: 'color 0.2s', '&:hover': { color: '#FBBF24' } }}>
+              {cat}
+            </Typography>
+          ))}
+        </Box>
       </Box>
     </Box>
   );

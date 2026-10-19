@@ -1,11 +1,13 @@
 import { Box, Button, Container, Grid, Typography } from '@mui/material';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CategoryBlock from '../../components/CategoryBlock/CategoryBlock';
 import HorizontalProductList from '../../components/HorizontalProductList/HorizontalProductList';
 import PromoCarousel from '../../components/PromoCarousel/PromoCarousel';
+import { loadOrders } from '../../store/orders/Orders.actions';
 import { loadProducts } from '../../store/products/Products.actions';
 import { useAppDispatch, useAppSelector } from '../../store/store';
+import { buildOrderSuggestions } from '../../utils/orderSuggestions';
 
 import CategoryBeauty from '../../assets/category_beauty.jpg';
 import CategoryTech from '../../assets/category_tech.jpg';
@@ -20,15 +22,25 @@ import SaleTime from '../../assets/sale_time.jpg';
 const Home = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
   const productState = useAppSelector(state => state.products);
-  const products = Object.values(productState);
+  const orders = useAppSelector(state => state.orders);
 
   useEffect(() => {
-    async function load() {
-      await dispatch(loadProducts());
-    }
-    load();
+    dispatch(loadProducts());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    dispatch(loadOrders());
+  }, [dispatch, isAuthenticated]);
+
+  const { buyAgain, recommended } = useMemo(
+    () => isAuthenticated
+      ? buildOrderSuggestions(Object.values(orders), productState)
+      : { buyAgain: [], recommended: [] },
+    [isAuthenticated, orders, productState]
+  );
 
   return (
     <section>
@@ -59,24 +71,28 @@ const Home = () => {
             <Grid size={{ xs: 12, sm: 6, md: 3 }}><CategoryBlock title="Home & Kitchen" image={CategoryKitchen} onClick={() => navigate("/categories/Home & Kitchen")} /></Grid>
           </Grid>
 
-          {/* Buy Again Section */}
-          <HorizontalProductList title="Buy it again" products={products} />
+          {buyAgain.length > 0 && (
+            <HorizontalProductList title="Buy it again" products={buyAgain} />
+          )}
 
           {/* Additional Block requested Fashion */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid size={{ xs: 12, md: 4 }}>
               <CategoryBlock title="Fashion Trends" image={CategoryFashion} onClick={() => navigate("/categories/Fashion")} />
             </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Box sx={{ bgcolor: 'white', p: 3, borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundImage: `linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)), url(${SaleTime})`, backgroundSize: 'cover' }}>
-                  <Typography variant="h4" color="primary.main" sx={{ mb: 2, fontWeight: '800' }}>Sign in for your best experience</Typography>
-                  <Button variant="contained" size="large" sx={{ px: 6, py: 1.5, borderRadius: '30px' }}>Sign in securely</Button>
-              </Box>
-            </Grid>
+            {!isAuthenticated && (
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Box sx={{ bgcolor: 'white', p: 3, borderRadius: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundImage: `linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)), url(${SaleTime})`, backgroundSize: 'cover' }}>
+                    <Typography variant="h4" color="primary.main" sx={{ mb: 2, fontWeight: '800' }}>Sign in for your best experience</Typography>
+                    <Button variant="contained" size="large" onClick={() => navigate('/login')} sx={{ px: 6, py: 1.5, borderRadius: '30px' }}>Sign in securely</Button>
+                </Box>
+              </Grid>
+            )}
           </Grid>
 
-          {/* Recommended Section */}
-          <HorizontalProductList title="Recommended for you based on trends" products={products} />
+          {recommended.length > 0 && (
+            <HorizontalProductList title="Recommended based on your orders" products={recommended} />
+          )}
         </Container>
       </Box>
     </section>

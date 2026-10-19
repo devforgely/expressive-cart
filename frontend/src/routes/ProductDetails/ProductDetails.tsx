@@ -1,8 +1,9 @@
 import { Box, Button, Container, Grid, List, ListItem, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Incrementer } from '../../components/Incrementer/Incrementer';
 import { useAppDispatch, useAppSelector } from '../../store/store';
+import { savePendingCartItem } from '../../utils/pendingCart';
 
 import { addItem } from '../../store/cart/Cart.actions';
 import { loadProduct } from '../../store/products/Products.actions';
@@ -10,11 +11,15 @@ import { loadProduct } from '../../store/products/Products.actions';
 const ProductDetails = () => {
 
   const { productId } = useParams<{ productId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [ quantity, setQuantity ] = useState(1);
 
   const dispatch = useAppDispatch();
   const products = useAppSelector(state => state.products);
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const updating = useAppSelector(state => state.cart.updating);
   const product = productId ? products[productId] : undefined;
 
   useEffect(() => {
@@ -33,8 +38,17 @@ const ProductDetails = () => {
     setQuantity(Math.max(1, quantity - 1));
   }
 
-  async function handleAddToCart() {
-    await dispatch(addItem({product, quantity}));
+  function handleAddToCart() {
+    if (!product) return;
+
+    if (!isAuthenticated) {
+      savePendingCartItem({ productId: product.id, quantity });
+      const next = encodeURIComponent(`${location.pathname}${location.search}`);
+      navigate(`/login?next=${next}`);
+      return;
+    }
+
+    dispatch(addItem({ productId: product.id, quantity }));
   }
 
   return (
@@ -62,8 +76,8 @@ const ProductDetails = () => {
 
               <Box sx={{ mt: 'auto' }}>
                 <Incrementer value={quantity} onIncrement={handleIncrement} onDecrement={handleDecrement} isDisabled={!product?.stock} title="Quantity" />
-                <Button variant="contained" fullWidth size="large" onClick={handleAddToCart} disabled={!product?.stock} sx={{ py: 1.5, fontSize: '1.1rem' }}>
-                  {product?.stock ? 'Add to Expressive Cart' : 'Currently Unavailable'}
+                <Button variant="contained" fullWidth size="large" onClick={handleAddToCart} disabled={!product?.stock || updating} sx={{ py: 1.5, fontSize: '1.1rem' }}>
+                  {product?.stock ? 'Add to Cart' : 'Currently Unavailable'}
                 </Button>
               </Box>
             </Box>

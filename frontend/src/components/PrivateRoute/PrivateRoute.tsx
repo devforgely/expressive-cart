@@ -1,11 +1,20 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store/store';
 
 const PrivateRoute = () => {
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  
-  // If not logged in, boot them to login. Otherwise, render the child route (Outlet).
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  const { isAuthenticated, authStatus } = useAppSelector((state) => state.auth);
+  const location = useLocation();
+
+  if (authStatus === 'unknown') {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return <Outlet />;
+  }
+
+  const next = encodeURIComponent(`${location.pathname}${location.search}`);
+  return <Navigate to={`/login?next=${next}`} replace />;
 }
 
 export default PrivateRoute;
