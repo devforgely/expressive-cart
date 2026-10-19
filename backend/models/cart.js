@@ -93,6 +93,14 @@ module.exports = class CartModel {
     }
   }
 
+  static async lockById(id, userId, dbClient) {
+    const result = await db.resolveDb(dbClient).query(
+      'SELECT * FROM carts WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [id, userId]
+    );
+    return result.rows?.[0] || null;
+  }
+
   /**
    * Returns the user's cart, creating one if they do not have one yet.
    * @param  {number} userId

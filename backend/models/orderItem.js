@@ -43,14 +43,14 @@ module.exports = class OrderItemModel {
     }
   }
 
-  static async createMany(rows) {
+  static async createMany(rows, dbClient) {
     if (!rows || !rows.length) {
       return [];
     }
 
     try {
       const statement = pgp.helpers.insert(rows, orderItemTable) + ' RETURNING *';
-      const result = await db.query(statement);
+      const result = await db.resolveDb(dbClient).query(statement);
       return result.rows || [];
     } catch (err) {
       throw new Error(err);

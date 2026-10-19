@@ -47,7 +47,7 @@ Browser (Vite, http://localhost:5173)
                             PostgreSQL
 ```
 
-The Vite dev server proxies `/api` to the API so the session cookie stays on the frontend origin. Prices are stored in cents and shown in dollars. Each successful charge creates an order number shaped like `EC` plus eight characters, with status `paid`.
+The Vite dev server proxies `/api` to the API so the session cookie stays on the frontend origin. Prices are stored in cents and shown in dollars. Each completed checkout has an order number shaped like `EC` plus eight characters, with status `paid`.
 
 ## Run it locally
 

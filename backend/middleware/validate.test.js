@@ -5,7 +5,7 @@ const { registerRules, addCartItemRules, checkoutRules } = require('./validate')
 function buildApp(path, rules) {
   const app = express();
   app.use(express.json());
-  app.post(path, rules, (req, res) => res.status(200).json({ ok: true }));
+  app.post(path, rules, (req, res) => res.status(200).json(req.body));
   app.use((err, req, res, next) => {
     res.status(err.status || 500).json({ message: err.message });
   });
@@ -30,6 +30,22 @@ describe('validation middleware', () => {
       .send({ email: 'shopper@example.com', password: 'password123' });
 
     expect(response.status).toBe(200);
+  });
+
+  it('keeps apostrophes and ampersands in names', async () => {
+    const app = buildApp('/register', registerRules);
+    const response = await request(app)
+      .post('/register')
+      .send({
+        email: 'shopper@example.com',
+        password: 'password123',
+        firstName: "Anne-Marie O'Brien",
+        lastName: 'Smith & Sons'
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.firstName).toBe("Anne-Marie O'Brien");
+    expect(response.body.lastName).toBe('Smith & Sons');
   });
 
   it('rejects cart items without a positive qty', async () => {

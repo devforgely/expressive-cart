@@ -22,13 +22,11 @@ const registerRules = [
   body('firstName')
     .optional({ values: 'falsy' })
     .trim()
-    .escape()
     .isLength({ max: 50 })
     .withMessage('firstName must be 50 characters or fewer'),
   body('lastName')
     .optional({ values: 'falsy' })
     .trim()
-    .escape()
     .isLength({ max: 50 })
     .withMessage('lastName must be 50 characters or fewer'),
   validate

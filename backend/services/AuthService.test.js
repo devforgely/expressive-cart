@@ -72,6 +72,7 @@ describe('AuthService', () => {
 
     expect(result.password).toBeUndefined();
     expect(result.id).toBe(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it('rejects an incorrect password', async () => {

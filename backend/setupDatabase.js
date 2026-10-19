@@ -2,6 +2,18 @@ const { Client } = require('pg');
 const { DB } = require('./config');
 const { createOrderNumber } = require('./utils/orderNumber');
 
+function unescapeStoredName(value) {
+  return String(value || '')
+    .replaceAll('&#96;', '`')
+    .replaceAll('&#x5C;', '\\')
+    .replaceAll('&#x2F;', '/')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&#x27;', "'")
+    .replaceAll('&quot;', '"')
+    .replaceAll('&amp;', '&');
+}
+
 (async () => {
   const orderStatusStmt = `
     DO $$
@@ -57,6 +69,7 @@ const { createOrderNumber } = require('./utils/orderNumber');
       status            order_status      DEFAULT 'pending',
       card_last4        VARCHAR(4),
       card_brand        VARCHAR(20),
+      stripe_charge_id  TEXT,
       shipping_address  JSONB,
       billing_address   JSONB,
       created_at        TIMESTAMPTZ       DEFAULT CURRENT_TIMESTAMP,
@@ -70,6 +83,7 @@ const { createOrderNumber } = require('./utils/orderNumber');
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(16);
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_last4 VARCHAR(4);
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_brand VARCHAR(20);
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_charge_id TEXT;
   `;
 
   const orderItemsTableStmt = `
@@ -228,6 +242,20 @@ const { createOrderNumber } = require('./utils/orderNumber');
 
     await db.query(orderStatusStmt);
     await db.query(usersTableStmt);
+
+    const storedNames = await db.query('SELECT id, first_name, last_name FROM users');
+    for (const row of storedNames.rows) {
+      const firstName = unescapeStoredName(row.first_name);
+      const lastName = unescapeStoredName(row.last_name);
+      if (firstName === row.first_name && lastName === row.last_name) continue;
+      await db.query(
+        `UPDATE users
+         SET first_name = $1, last_name = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3`,
+        [firstName, lastName, row.id]
+      );
+    }
+
     await db.query(productsTableStmt);
     await db.query(productsMigrateStmt);
     await db.query(ordersTableStmt);
@@ -253,6 +281,9 @@ const { createOrderNumber } = require('./utils/orderNumber');
       }
     }
     await db.query('CREATE UNIQUE INDEX IF NOT EXISTS orders_order_number_key ON orders (order_number)');
+    await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS orders_stripe_charge_id_key
+                    ON orders (stripe_charge_id)
+                    WHERE stripe_charge_id IS NOT NULL`);
     await db.query('ALTER TABLE orders ALTER COLUMN order_number SET NOT NULL');
     await db.query(cartsTableStmt);
     await db.query(cartItemsTableStmt);

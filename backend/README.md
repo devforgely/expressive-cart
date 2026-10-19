@@ -1,6 +1,6 @@
 # Expressive Cart API
 
-Express REST API for Expressive Cart. It stores users, a product catalog, one cart per user, and paid orders in PostgreSQL. Checkout creates a Stripe charge, then writes the order.
+Express REST API for Expressive Cart. It stores users, a product catalog, one cart per user, and paid orders in PostgreSQL. Checkout writes the order before charging the card, then marks it paid.
 
 The storefront that calls this API is documented in the [frontend README](../frontend/README.md). The project overview is in the [root README](../README.md).
 
@@ -31,7 +31,7 @@ npm run create-db
 npm run start
 ```
 
-`create-db` runs `setupDatabase.js`. It creates missing tables, adds columns that older databases do not have yet, and inserts the seed products when a product with the same name is not already there. The API then listens on `PORT`.
+`create-db` runs `setupDatabase.js`. It creates missing tables, adds columns that older databases do not have yet, restores names that were stored as HTML entities, and inserts the seed products when a product with the same name is not already there. The API then listens on `PORT`.
 
 | Script | What it does |
 | --- | --- |
@@ -51,9 +51,9 @@ Every route is mounted under `/api`. The Vite dev server proxies that prefix, so
 
 ## Auth
 
-Sessions last 24 hours. The cookie is `httpOnly`, `sameSite: lax`, and `secure` when `NODE_ENV` is `production`. Passwords are hashed with bcrypt. Responses go through `safeUser`, which strips `password`.
+Sessions last 24 hours. The cookie is `httpOnly`, `sameSite: lax`, and `secure` when `NODE_ENV` is `production`. Passwords are hashed with bcrypt before they are stored. Responses go through `safeUser`, which strips `password`.
 
-- `POST /api/auth/register` creates the user and signs them in. Email must be unique. Password must be at least 8 characters. `firstName` and `lastName` are optional and capped at 50 characters.
+- `POST /api/auth/register` creates the user and signs them in. Email must be unique. Password must be at least 8 characters. `firstName` and `lastName` are optional, trimmed, and capped at 50 characters. They are stored as the shopper typed them.
 - `POST /api/auth/login` checks email and password with the Passport local strategy. The username field is `email`.
 - `GET /api/auth/google` and `GET /api/auth/google/callback` run the Google strategy when client id and secret are set. An existing email is linked; otherwise a user is created with a random password hash and the Google profile stored in `social_auth`. Failure redirects to the storefront login page with `error=google_unavailable` or `error=google_failed`.
 - `POST /api/auth/logout` ends the Passport session and clears `connect.sid`.
@@ -77,7 +77,7 @@ Signed-in cart (`/api/cart`). The service creates the user’s cart on first use
 - `POST /api/cart/items` with `{ productId, qty }` adds a line or increases the existing one. Quantity must be a positive integer and the resulting quantity cannot exceed `stock_qty`.
 - `PUT /api/cart/items/:cartItemId` sets `quantity` (or `qty`) and checks stock again. The line must belong to the session user’s cart.
 - `DELETE /api/cart/items/:cartItemId` removes that line.
-- `POST /api/cart/checkout` charges the cart and creates the order. Body: `cartId`, `paymentInfo` (a Stripe token, using `paymentInfo.id`), `shippingAddress`, and `billingAddress`.
+- `POST /api/cart/checkout` writes a pending order, charges the cart, then marks the order paid. Body: `cartId`, `paymentInfo` (a Stripe token, using `paymentInfo.id`), `shippingAddress`, and `billingAddress`.
 
 Signed-in orders:
 
@@ -95,7 +95,7 @@ Validation lives in `middleware/validate.js` and returns the first failure as a 
 
 Merchandise is the sum of each line’s cent price times quantity. Shipping is 599 cents when that subtotal is greater than 0 and below 3000 cents, otherwise 0. The charge is merchandise plus shipping, in USD, and must be at least 50 cents.
 
-`stripe.charges.create` uses the token id as `source`. Card errors become 402 messages (declined, insufficient funds, invalid number, expired, incorrect CVC). A charge that is not `succeeded` is also a 402. When the charge succeeds, the API inserts an order with status `paid`, the card brand and last four, and both addresses, then inserts `order_items` at the current cent price and deletes the cart lines.
+The cart is locked, then a pending order and its line items are committed before `stripe.charges.create`. The charge uses the token id as `source` and an idempotency key tied to the order number. Card errors become 402 messages (declined, insufficient funds, invalid number, expired, incorrect CVC), and the pending order is removed. A charge that is not `succeeded` is also a 402. When the charge succeeds, the order is marked `paid` with the card brand and last four, and the cart lines are deleted. If that update fails, the charge is refunded. A retry of the same cart reuses the pending order, so a charge that already succeeded is not taken again.
 
 Stock is enforced when a line is added or updated. Checkout does not decrement `stock_qty`.
 
@@ -111,11 +111,11 @@ Status values are the `order_status` enum: `pending`, `paid`, `shipped`, `comple
 - **products** — `name`, `price` (cents), `description`, `stock_qty`, `image_url`, `category`, `details` jsonb.
 - **carts** — one row per `user_id`.
 - **cart_items** — `cart_id`, `product_id`, `quantity`, unique on `(cart_id, product_id)`.
-- **orders** — `order_number` unique, `user_id`, `total_price` (cents), `status`, `card_last4`, `card_brand`, `shipping_address`, `billing_address`.
+- **orders** — `order_number` unique, `user_id`, `total_price` (cents), `status`, `card_last4`, `card_brand`, `stripe_charge_id`, `shipping_address`, `billing_address`.
 - **order_items** — `order_id`, nullable `product_id`, `quantity`, `price` (cents at purchase).
 
 Seed products cover Tech, Fashion, Home & Kitchen, Beauty & Wellness, Garden Essentials, and Must Haves.
 
 ## Tests
 
-Jest runs the `*.test.js` files: auth service, auth middleware, request validation, order numbers, and Stripe error mapping.
+Jest runs the `*.test.js` files: auth service, auth middleware, request validation, cart checkout, order numbers, and Stripe error mapping.

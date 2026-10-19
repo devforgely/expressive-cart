@@ -58,7 +58,7 @@ module.exports = class CartItemModel {
    * @param  {Object} cartId [Cart ID]
    * @return {Array}         [Created cart item]
    */
-  static async find(cartId) {
+  static async find(cartId, dbClient) {
     try {
 
       // Generate SQL statement
@@ -78,9 +78,9 @@ module.exports = class CartItemModel {
                          WHERE ci.cart_id = $1
                          ORDER BY ci.created_at ASC`
       const values = [cartId];
-  
+
       // Execute SQL statment
-      const result = await db.query(statement, values);
+      const result = await db.resolveDb(dbClient).query(statement, values);
 
       if (result.rows?.length) {
         return result.rows;
@@ -119,9 +119,9 @@ module.exports = class CartItemModel {
    * @param  {Object}      id [Cart item ID]
    * @return {Object|null}    [Deleted cart item]
    */
-  static async clear(cartId) {
+  static async clear(cartId, dbClient) {
     try {
-      await db.query('DELETE FROM cart_items WHERE cart_id = $1', [cartId]);
+      await db.resolveDb(dbClient).query('DELETE FROM cart_items WHERE cart_id = $1', [cartId]);
     } catch (err) {
       throw new Error(err);
     }
